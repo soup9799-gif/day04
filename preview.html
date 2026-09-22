@@ -82,6 +82,25 @@
     font-size: 0.75rem;
     color: #9ca3af;
   }
+  .todo-details {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .detail-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .detail-chip .detail-label {
+    color: #9ca3af;
+  }
   .raw-fields {
     margin-top: 8px;
     font-size: 0.8rem;
@@ -106,6 +125,8 @@
     #status.loading { background: #1e2140; color: #c7d2fe; }
     #status.error { background: #3b1414; color: #fca5a5; }
     #status.empty { background: #1c1f26; color: #9aa0aa; }
+    .detail-chip { background: #22262f; color: #d1d5db; }
+    .detail-chip .detail-label { color: #6b7280; }
   }
 </style>
 </head>
@@ -152,6 +173,24 @@
     return d.toLocaleString("ko-KR");
   }
 
+  function formatDateOnly(value) {
+    if (!value) return "";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString("ko-KR");
+  }
+
+  function addChip(container, label, value) {
+    const chip = document.createElement("span");
+    chip.className = "detail-chip";
+    const labelEl = document.createElement("span");
+    labelEl.className = "detail-label";
+    labelEl.textContent = label;
+    chip.appendChild(labelEl);
+    chip.appendChild(document.createTextNode(value));
+    container.appendChild(chip);
+  }
+
   function renderRows(rows) {
     listEl.innerHTML = "";
 
@@ -162,7 +201,7 @@
 
     setStatus("", "hidden");
 
-    const knownKeys = ["id", "title", "task", "name", "content", "is_done", "done", "completed", "created_at", "inserted_at", "updated_at"];
+    const knownKeys = ["id", "title", "task", "name", "content", "is_done", "done", "completed", "amount", "due_date", "created_at", "inserted_at", "updated_at"];
 
     rows.forEach((row) => {
       const li = document.createElement("li");
@@ -172,6 +211,8 @@
       const doneRaw = pick(row, ["is_done", "done", "completed"]);
       const isDone = doneRaw === true || doneRaw === "true" || doneRaw === 1;
       const createdAt = pick(row, ["created_at", "inserted_at"]);
+      const amount = pick(row, ["amount"]);
+      const dueDate = pick(row, ["due_date"]);
 
       const row1 = document.createElement("div");
       row1.className = "row";
@@ -188,10 +229,21 @@
       row1.appendChild(badge);
       li.appendChild(row1);
 
+      const details = document.createElement("div");
+      details.className = "todo-details";
+
+      if (row.id !== undefined) addChip(details, "ID", String(row.id));
+      if (amount !== undefined) addChip(details, "수량", String(amount));
+      if (dueDate !== undefined) addChip(details, "마감일", formatDateOnly(dueDate));
+
+      if (details.children.length) {
+        li.appendChild(details);
+      }
+
       if (createdAt) {
         const meta = document.createElement("div");
         meta.className = "todo-meta";
-        meta.textContent = formatDate(createdAt);
+        meta.textContent = `등록일: ${formatDate(createdAt)}`;
         li.appendChild(meta);
       }
 
