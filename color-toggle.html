@@ -9,9 +9,11 @@
     margin: 0;
     height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: skyblue;
+    gap: 2rem;
+    background: #0047AB;
     transition: background 0.3s;
     font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
   }
@@ -19,20 +21,29 @@
     font-size: 1.5rem;
     padding: 0.8rem 2rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 999px;
     cursor: pointer;
-    background: #fff;
+    background: #ffffff;
+    color: #0047AB;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  a.back {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #cddcf7;
+    text-decoration: none;
   }
 </style>
 </head>
 <body>
   <button onclick="toggleColor()">배경색상 바꾸기</button>
+  <a class="back" href="index.html">← 홈으로 돌아가기</a>
   <script>
-    const colors = ['skyblue', 'pink'];
+    const colors = ['#0047AB', '#4169E1'];
     let index = 0;
     function toggleColor() {
       index = (index + 1) % colors.length;
-      
       document.body.style.background = colors[index];
     }
   </script>
