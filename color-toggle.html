@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배경색 바꾸기</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: skyblue;
+    transition: background 0.3s;
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+  }
+  button {
+    font-size: 1.5rem;
+    padding: 0.8rem 2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #fff;
+  }
+</style>
+</head>
+<body>
+  <button onclick="toggleColor()">배경색상 바꾸기</button>
+  <script>
+    const colors = ['skyblue', 'pink'];
+    let index = 0;
+    function toggleColor() {
+      index = (index + 1) % colors.length;
+      
+      document.body.style.background = colors[index];
+    }
+  </script>
+</body>
+</html>
