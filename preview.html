@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo 목록</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+    background: #f5f6f8;
+    color: #1a1a1a;
+    padding: 24px 16px 60px;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  #status {
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+  }
+  #status.loading { background: #eef2ff; color: #3730a3; }
+  #status.error { background: #fee2e2; color: #991b1b; white-space: pre-wrap; }
+  #status.empty { background: #f3f4f6; color: #555; }
+  #status.hidden { display: none; }
+  ul#todo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  li.todo-item {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  li.todo-item .row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .todo-title {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1;
+    word-break: break-word;
+  }
+  .todo-title.done {
+    text-decoration: line-through;
+    color: #9ca3af;
+  }
+  .badge {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .badge.done { background: #dcfce7; color: #166534; }
+  .badge.pending { background: #fef3c7; color: #92400e; }
+  .todo-meta {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #9ca3af;
+  }
+  .raw-fields {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+  .raw-fields div { margin-top: 2px; }
+  button#reload {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-bottom: 16px;
+  }
+  button#reload:hover { background: #4338ca; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #111318; color: #e5e7eb; }
+    li.todo-item { background: #1c1f26; border-color: #2a2e37; }
+    .subtitle { color: #9aa0aa; }
+    #status.loading { background: #1e2140; color: #c7d2fe; }
+    #status.error { background: #3b1414; color: #fca5a5; }
+    #status.empty { background: #1c1f26; color: #9aa0aa; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>test_todos 목록</h1>
+    <div class="subtitle">Supabase 테이블 <code>test_todos</code>에서 불러온 데이터</div>
+
+    <button id="reload">새로고침</button>
+    <div id="status" class="loading">불러오는 중...</div>
+    <ul id="todo-list"></ul>
+  </div>
+
+<script>
+  // Supabase 프로젝트 설정
+  const SUPABASE_URL = "https://qvmtnirudsznrcsnwder.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_WhGhGu3qD2p5tojmxaIGhQ_kbldw2My";
+  const TABLE_NAME = "test_todos";
+
+  const statusEl = document.getElementById("status");
+  const listEl = document.getElementById("todo-list");
+  const reloadBtn = document.getElementById("reload");
+
+  function setStatus(message, type) {
+    statusEl.textContent = message;
+    statusEl.className = type || "";
+    statusEl.classList.toggle("hidden", !message);
+  }
+
+  // 대표적으로 쓰일 법한 필드 이름들을 우선순위로 탐색한다.
+  function pick(row, keys) {
+    for (const key of keys) {
+      if (row[key] !== undefined && row[key] !== null && row[key] !== "") {
+        return row[key];
+      }
+    }
+    return undefined;
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleString("ko-KR");
+  }
+
+  function renderRows(rows) {
+    listEl.innerHTML = "";
+
+    if (!rows.length) {
+      setStatus("표시할 데이터가 없습니다.", "empty");
+      return;
+    }
+
+    setStatus("", "hidden");
+
+    const knownKeys = ["id", "title", "task", "name", "content", "is_done", "done", "completed", "created_at", "inserted_at", "updated_at"];
+
+    rows.forEach((row) => {
+      const li = document.createElement("li");
+      li.className = "todo-item";
+
+      const title = pick(row, ["title", "task", "name", "content"]) ?? "(제목 없음)";
+      const doneRaw = pick(row, ["is_done", "done", "completed"]);
+      const isDone = doneRaw === true || doneRaw === "true" || doneRaw === 1;
+      const createdAt = pick(row, ["created_at", "inserted_at"]);
+
+      const row1 = document.createElement("div");
+      row1.className = "row";
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "todo-title" + (isDone ? " done" : "");
+      titleEl.textContent = String(title);
+
+      const badge = document.createElement("span");
+      badge.className = "badge " + (isDone ? "done" : "pending");
+      badge.textContent = isDone ? "완료" : "진행중";
+
+      row1.appendChild(titleEl);
+      row1.appendChild(badge);
+      li.appendChild(row1);
+
+      if (createdAt) {
+        const meta = document.createElement("div");
+        meta.className = "todo-meta";
+        meta.textContent = formatDate(createdAt);
+        li.appendChild(meta);
+      }
+
+      // 위에서 다루지 않은 나머지 필드들도 참고용으로 표시
+      const extraKeys = Object.keys(row).filter((k) => !knownKeys.includes(k));
+      if (extraKeys.length) {
+        const extraWrap = document.createElement("div");
+        extraWrap.className = "raw-fields";
+        extraKeys.forEach((key) => {
+          const field = document.createElement("div");
+          field.textContent = `${key}: ${JSON.stringify(row[key])}`;
+          extraWrap.appendChild(field);
+        });
+        li.appendChild(extraWrap);
+      }
+
+      listEl.appendChild(li);
+    });
+  }
+
+  async function loadTodos() {
+    setStatus("불러오는 중...", "loading");
+    listEl.innerHTML = "";
+
+    const url = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*&order=id.asc`;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`요청 실패 (HTTP ${res.status})\n${errText}`);
+      }
+
+      const data = await res.json();
+      renderRows(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setStatus(`데이터를 불러오지 못했습니다.\n${err.message}`, "error");
+    }
+  }
+
+  reloadBtn.addEventListener("click", loadTodos);
+  loadTodos();
+</script>
+</body>
+</html>
